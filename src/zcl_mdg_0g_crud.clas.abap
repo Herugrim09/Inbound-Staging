@@ -1,7 +1,7 @@
-CLASS zcl_mdg_0g_crud DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PRIVATE.
+class ZCL_MDG_0G_CRUD definition
+  public
+  final
+  create private .
 
 ************************************************************************
 * Project : Inbound-Staging
@@ -10,50 +10,76 @@ CLASS zcl_mdg_0g_crud DEFINITION
 *           Get it with ZCL_MDG_0G_CRUD=>GET_INSTANCE( ); callers talk
 *           to the ZIF_MDG_0G_CU interface only.
 ************************************************************************
+public section.
 
-  PUBLIC SECTION.
+  interfaces ZIF_MDG_0G_CU .
 
-    INTERFACES zif_mdg_0g_cu.
+  aliases CLEAR_BUFFERS
+    for ZIF_MDG_0G_CU~CLEAR_BUFFERS .
+  aliases COMMIT
+    for ZIF_MDG_0G_CU~COMMIT .
+  aliases CREATE_CREQUEST
+    for ZIF_MDG_0G_CU~CREATE_CREQUEST .
+  aliases CREATE_REF
+    for ZIF_MDG_0G_CU~CREATE_REF .
+  aliases ENQUEUE_CR
+    for ZIF_MDG_0G_CU~ENQUEUE_CR .
+  aliases ENQUEUE_ENTITY
+    for ZIF_MDG_0G_CU~ENQUEUE_ENTITY .
+  aliases FLUSH
+    for ZIF_MDG_0G_CU~FLUSH .
+  aliases GET_MESSAGES
+    for ZIF_MDG_0G_CU~GET_MESSAGES .
+  aliases SAVE
+    for ZIF_MDG_0G_CU~SAVE .
+  aliases WRITE_DATA
+    for ZIF_MDG_0G_CU~WRITE_DATA .
+  aliases TS_BUFFER
+    for ZIF_MDG_0G_CU~TS_BUFFER .
+  aliases TT_BUFFER
+    for ZIF_MDG_0G_CU~TT_BUFFER .
 
-    CLASS-METHODS get_instance
-      IMPORTING iv_model          TYPE usmd_model DEFAULT '0G'
-      RETURNING VALUE(ro_instance) TYPE REF TO zif_mdg_0g_cu.
+  class-methods GET_INSTANCE
+    importing
+      !IV_MODEL type USMD_MODEL default '0G'
+    returning
+      value(RO_INSTANCE) type ref to ZIF_MDG_0G_CU .
+protected section.
+private section.
 
-  PRIVATE SECTION.
+  class-data GO_INSTANCE type ref to ZCL_MDG_0G_CRUD .
+  data MV_MODEL type USMD_MODEL .
+  data MV_CREQUEST type USMD_CREQUEST .
+  data MT_BUFFER type ZIF_MDG_0G_CU=>TT_BUFFER .
+  data MT_MESSAGE type USMD_T_MESSAGE .
+  data MI_API type ref to IF_USMD_GOV_API .
 
-    CLASS-DATA go_instance TYPE REF TO zcl_mdg_0g_crud.
-
-    DATA mv_model    TYPE usmd_model.
-    DATA mv_crequest TYPE usmd_crequest.
-    DATA mt_buffer   TYPE zif_mdg_0g_cu=>tt_buffer.
-    DATA mt_message  TYPE usmd_t_message.
-    DATA mi_api      TYPE REF TO if_usmd_gov_api.
-
-    METHODS constructor
-      IMPORTING iv_model TYPE usmd_model.
-
+  methods CONSTRUCTOR
+    importing
+      !IV_MODEL type USMD_MODEL .
     "! Cached Gov API instance. Returns unbound (and collects a message)
     "! when it cannot be obtained.
-    METHODS api
-      RETURNING VALUE(ri_api) TYPE REF TO if_usmd_gov_api.
-
+  methods API
+    returning
+      value(RI_API) type ref to IF_USMD_GOV_API .
     "! Build a Gov-API-typed table (key or key+attr) for an entity and
     "! MOVE-CORRESPONDING the buffered rows into it.
-    METHODS to_gov_table
-      IMPORTING iv_entity     TYPE usmd_entity
-                iv_with_attr  TYPE abap_bool
-                it_src        TYPE ANY TABLE
-      RETURNING VALUE(rr_tab) TYPE REF TO data.
-
-    METHODS collect
-      IMPORTING it_messages TYPE usmd_t_message  OPTIONAL
-                ix_error    TYPE REF TO cx_root  OPTIONAL.
-
+  methods TO_GOV_TABLE
+    importing
+      !IV_ENTITY type USMD_ENTITY
+      !IV_WITH_ATTR type ABAP_BOOL
+      !IT_SRC type ANY TABLE
+    returning
+      value(RR_TAB) type ref to DATA .
+  methods COLLECT
+    importing
+      !IT_MESSAGES type USMD_T_MESSAGE optional
+      !IX_ERROR type ref to CX_ROOT optional .
 ENDCLASS.
 
 
 
-CLASS zcl_mdg_0g_crud IMPLEMENTATION.
+CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
 
   METHOD get_instance.
@@ -346,6 +372,4 @@ CLASS zcl_mdg_0g_crud IMPLEMENTATION.
                       msgv1 = ix_error->get_text( ) ) TO mt_message.
     ENDIF.
   ENDMETHOD.
-
-
 ENDCLASS.
