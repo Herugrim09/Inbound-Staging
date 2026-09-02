@@ -30,11 +30,12 @@ CLASS zcl_mdg_0g_srv_mapper_pctr DEFINITION
 
     METHODS finalize_main REDEFINITION.
 
+private section.
 ENDCLASS.
 
 
 
-CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
+CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
 
 
   METHOD zif_mdg_0g_srv_mapper~get_main_entity.
@@ -77,9 +78,9 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 
       ( src_path = 'ATTRIBUTES'
         mapping  = VALUE #(
-          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'         dstname = 'PCTRDEPT'  )
-          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID' dstname = 'PCTRLSYS'  )
-          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED'   dstname = 'PCTRLKIND' ) ) )
+          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'                dstname = 'PCTRDEPT'  )
+          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID'        dstname = 'PCTRLSYS'  )
+          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED_INDICATO' dstname = 'PCTRLKIND' ) ) )
 
       ( src_path = 'ATTRIBUTES-TAX_JURISDICTION_CODE'
         mapping  = VALUE #( ( level = 0 kind = 1 srcname = 'CONTENT' dstname = 'PCTRTXJCD' ) ) )
@@ -150,16 +151,12 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
     ASSIGN COMPONENT 'PCTRCCALL' OF STRUCTURE cs_main TO <ccall>.
     IF <ccall> IS ASSIGNED.
       DATA(lr_ca) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT' ).
-      DATA(lr_cm) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT_CMPL' ).
+      DATA(lr_cm) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT_LIST_COMPLE' ).
       IF lr_ca IS BOUND AND lr_cm IS BOUND.
         ASSIGN lr_ca->* TO <ca>.
         ASSIGN lr_cm->* TO <cmpl>.
         IF <ca> IS ASSIGNED AND <cmpl> IS ASSIGNED.
-          " SAPPLCO_INDICATOR is CHAR 5 ('true'/'false'/'X'/'1'/...) - treat
-          " anything that is neither blank nor a false marker as "complete"
-          IF <ca> IS INITIAL
-             AND <cmpl> IS NOT INITIAL
-             AND <cmpl> <> 'false' AND <cmpl> <> '0'.
+          IF <ca> IS INITIAL AND <cmpl> = abap_true.
             <ccall> = 'X'.
           ENDIF.
         ENDIF.
@@ -221,9 +218,7 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 
     INSERT VALUE #( entity = 'PCCCASS'
                     struct = '/MDG/_S_0G_PP_PCCCASS'
-                    recs   = lr_tab ) INTO ct_targets.
+                    recs   = lr_tab ) INTO TABLE ct_targets.
 
   ENDMETHOD.
-
-
 ENDCLASS.
