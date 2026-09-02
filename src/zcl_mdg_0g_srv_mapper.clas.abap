@@ -178,8 +178,37 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-*   append EXCEPT_ALL so only the explicitly listed pairs are moved
-    DATA(lt_map) = it_map.
+*   keep only the pairs whose source (and target) component really exists,
+*   so one wrong field name drops just that pair - not the whole group
+    DATA lt_map TYPE cl_abap_corresponding=>mapping_table.
+    FIELD-SYMBOLS: <c_src> TYPE any,
+                   <c_dst> TYPE any.
+
+    LOOP AT it_map ASSIGNING FIELD-SYMBOL(<rule>).
+
+      IF <rule>-srcname IS NOT INITIAL.
+        ASSIGN COMPONENT <rule>-srcname OF STRUCTURE is_src TO <c_src>.
+        IF sy-subrc <> 0.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+
+      IF <rule>-dstname IS NOT INITIAL.
+        ASSIGN COMPONENT <rule>-dstname OF STRUCTURE is_dst TO <c_dst>.
+        IF sy-subrc <> 0.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+
+      APPEND <rule> TO lt_map.
+
+    ENDLOOP.
+
+    IF lt_map IS INITIAL.
+      RETURN.
+    ENDIF.
+
+*   EXCEPT_ALL: only the explicitly listed pairs are moved
     APPEND VALUE #( level = 0 kind = cl_abap_corresponding=>mapping_except_all ) TO lt_map.
 
     TRY.
@@ -187,7 +216,7 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
                                             destination = is_dst
                                             mapping     = lt_map ).
       CATCH cx_corr_dyn_error.
-        CLEAR ro.               " invalid component mapping -> no object, caller skips
+        CLEAR ro.
         RETURN.
     ENDTRY.
 
