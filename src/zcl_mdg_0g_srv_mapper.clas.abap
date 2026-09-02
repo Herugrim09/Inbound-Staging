@@ -86,11 +86,12 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
 
     CLEAR et_targets.
 
-    DATA(lt_keys) = zif_mdg_0g_srv_mapper~derive_keys( is_message ).
+    DATA(lt_keys)   = zif_mdg_0g_srv_mapper~derive_keys( is_message ).
+    DATA(lv_struct) = zif_mdg_0g_srv_mapper~get_main_struct( ).
 
 *   --- main entity record ---
     DATA lr_tab TYPE REF TO data.
-    CREATE DATA lr_tab TYPE STANDARD TABLE OF (zif_mdg_0g_srv_mapper~get_main_struct( )).
+    CREATE DATA lr_tab TYPE STANDARD TABLE OF (lv_struct).
     FIELD-SYMBOLS <lt_main> TYPE STANDARD TABLE.
     ASSIGN lr_tab->* TO <lt_main>.
     IF <lt_main> IS NOT ASSIGNED.
@@ -98,7 +99,7 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
     ENDIF.
 
     DATA lr_row TYPE REF TO data.
-    CREATE DATA lr_row TYPE (zif_mdg_0g_srv_mapper~get_main_struct( )).
+    CREATE DATA lr_row TYPE (lv_struct).
     FIELD-SYMBOLS <ls_main> TYPE any.
     ASSIGN lr_row->* TO <ls_main>.
     IF <ls_main> IS NOT ASSIGNED.
@@ -113,7 +114,7 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
 
     INSERT <ls_main> INTO TABLE <lt_main>.
     INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( )
-                    struct = zif_mdg_0g_srv_mapper~get_main_struct( )
+                    struct = lv_struct
                     recs   = lr_tab )
       INTO TABLE et_targets.
 
