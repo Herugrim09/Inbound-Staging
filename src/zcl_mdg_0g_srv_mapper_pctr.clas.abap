@@ -15,16 +15,20 @@ CLASS zcl_mdg_0g_srv_mapper_pctr DEFINITION
 *           date conversions to be added later (mapper conversion step).
 ************************************************************************
 
-  PROTECTED SECTION.
+  PUBLIC SECTION.
 
+    " interface methods keep their PUBLIC visibility from the base class
     METHODS:
       zif_mdg_0g_srv_mapper~get_main_entity  REDEFINITION,
       zif_mdg_0g_srv_mapper~get_main_struct  REDEFINITION,
       zif_mdg_0g_srv_mapper~get_corr_groups  REDEFINITION,
       zif_mdg_0g_srv_mapper~get_text_struct  REDEFINITION,
       zif_mdg_0g_srv_mapper~derive_keys      REDEFINITION,
-      zif_mdg_0g_srv_mapper~map_sub_entities REDEFINITION,
-      finalize_main                          REDEFINITION.
+      zif_mdg_0g_srv_mapper~map_sub_entities REDEFINITION.
+
+  PROTECTED SECTION.
+
+    METHODS finalize_main REDEFINITION.
 
 ENDCLASS.
 
