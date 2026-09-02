@@ -8,7 +8,7 @@ CLASS zcl_mdg_0g_srv_mapper_pctr DEFINITION
 * Project : Inbound-Staging
 * Purpose : Inbound service mapper for Profit Center (0G entity PCTR).
 *           Reverse of the standard outbound SMT mapping
-*           (/MDG/_SX_0G_PCTR -> MDGF_PRFT_CTR_RPLCTN_REQ_PRFT).
+*           (/MDG/_SX_0G_PCTR -> SAPPLCO_PRCTR_RQ_PRCTR).
 *           Targets: /MDG/_S_0G_PP_PCTR, /MDG/_ST_0G_ES_PCTR,
 *                    /MDG/_S_0G_PP_PCCCASS.
 *           Value conversions are still 1:1 (x -> x); ALPHA / language /
@@ -30,26 +30,34 @@ CLASS zcl_mdg_0g_srv_mapper_pctr DEFINITION
 
     METHODS finalize_main REDEFINITION.
 
-private section.
+  PRIVATE SECTION.
+
+    CONSTANTS:
+      c_entity_main  TYPE usmd_entity VALUE 'PCTR'                  ##NO_TEXT,
+      c_entity_ccass TYPE usmd_entity VALUE 'PCCCASS'               ##NO_TEXT,
+      c_struct_main  TYPE string      VALUE '/MDG/_S_0G_PP_PCTR'    ##NO_TEXT,
+      c_struct_text  TYPE string      VALUE '/MDG/_ST_0G_ES_PCTR'   ##NO_TEXT,
+      c_struct_ccass TYPE string      VALUE '/MDG/_S_0G_PP_PCCCASS' ##NO_TEXT.
+
 ENDCLASS.
 
 
 
-CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
+CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 
 
   METHOD zif_mdg_0g_srv_mapper~get_main_entity.
-    rv_entity = 'PCTR'.
+    rv_entity = c_entity_main.
   ENDMETHOD.
 
 
   METHOD zif_mdg_0g_srv_mapper~get_main_struct.
-    rv_name = '/MDG/_S_0G_PP_PCTR'.
+    rv_name = c_struct_main.
   ENDMETHOD.
 
 
   METHOD zif_mdg_0g_srv_mapper~get_text_struct.
-    rv_name = '/MDG/_ST_0G_ES_PCTR'.
+    rv_name = c_struct_text.
   ENDMETHOD.
 
 
@@ -78,9 +86,9 @@ CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
 
       ( src_path = 'ATTRIBUTES'
         mapping  = VALUE #(
-          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'                dstname = 'PCTRDEPT'  )
-          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID'        dstname = 'PCTRLSYS'  )
-          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED_INDICATO' dstname = 'PCTRLKIND' ) ) )
+          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'         dstname = 'PCTRDEPT'  )
+          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID' dstname = 'PCTRLSYS'  )
+          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED'   dstname = 'PCTRLKIND' ) ) )
 
       ( src_path = 'ATTRIBUTES-TAX_JURISDICTION_CODE'
         mapping  = VALUE #( ( level = 0 kind = 1 srcname = 'CONTENT' dstname = 'PCTRTXJCD' ) ) )
@@ -151,12 +159,16 @@ CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
     ASSIGN COMPONENT 'PCTRCCALL' OF STRUCTURE cs_main TO <ccall>.
     IF <ccall> IS ASSIGNED.
       DATA(lr_ca) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT' ).
-      DATA(lr_cm) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT_LIST_COMPLE' ).
+      DATA(lr_cm) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT_CMPL' ).
       IF lr_ca IS BOUND AND lr_cm IS BOUND.
         ASSIGN lr_ca->* TO <ca>.
         ASSIGN lr_cm->* TO <cmpl>.
         IF <ca> IS ASSIGNED AND <cmpl> IS ASSIGNED.
-          IF <ca> IS INITIAL AND <cmpl> = abap_true.
+          " SAPPLCO_INDICATOR is CHAR 5 ('true'/'false'/'X'/'1'/...) - treat
+          " anything that is neither blank nor a false marker as "complete"
+          IF <ca> IS INITIAL
+             AND <cmpl> IS NOT INITIAL
+             AND <cmpl> <> 'false' AND <cmpl> <> '0'.
             <ccall> = 'X'.
           ENDIF.
         ENDIF.
@@ -178,7 +190,7 @@ CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
     ENDIF.
 
     DATA lr_tab TYPE REF TO data.
-    CREATE DATA lr_tab TYPE STANDARD TABLE OF ('/MDG/_S_0G_PP_PCCCASS').
+    CREATE DATA lr_tab TYPE STANDARD TABLE OF (c_struct_ccass).
     FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
     ASSIGN lr_tab->* TO <lt>.
     IF <lt> IS NOT ASSIGNED.
@@ -186,7 +198,7 @@ CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
     ENDIF.
 
     DATA lr_line TYPE REF TO data.
-    CREATE DATA lr_line TYPE ('/MDG/_S_0G_PP_PCCCASS').
+    CREATE DATA lr_line TYPE (c_struct_ccass).
     FIELD-SYMBOLS <ls> TYPE any.
     ASSIGN lr_line->* TO <ls>.
     IF <ls> IS NOT ASSIGNED.
@@ -216,9 +228,11 @@ CLASS ZCL_MDG_0G_SRV_MAPPER_PCTR IMPLEMENTATION.
 
     ENDLOOP.
 
-    INSERT VALUE #( entity = 'PCCCASS'
-                    struct = '/MDG/_S_0G_PP_PCCCASS'
+    INSERT VALUE #( entity = c_entity_ccass
+                    struct = c_struct_ccass
                     recs   = lr_tab ) INTO TABLE ct_targets.
 
   ENDMETHOD.
+
+
 ENDCLASS.

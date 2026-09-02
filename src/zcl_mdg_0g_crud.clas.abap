@@ -83,7 +83,7 @@ CLASS zcl_mdg_0g_crud IMPLEMENTATION.
 
   METHOD zif_mdg_0g_cu~create_crequest.
 
-    clear_buffers( ).
+    zif_mdg_0g_cu~clear_buffers( ).
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND.
