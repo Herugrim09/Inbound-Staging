@@ -8,13 +8,14 @@ CLASS zcl_mdg_0g_pctr_wrapper DEFINITION
 * Purpose : End-to-end inbound Profit Center handling.
 *           map_to_staging()     : proxy payload -> 0G staging tables
 *                                  via ZCL_MDG_0G_SRV_MAPPER_* (CL_ABAP_CORRESPONDING)
-*           create_follow_up_cr(): staged data   -> Change Request (ZCL_MDG_0G_CR_WRITER)
+*           create_follow_up_cr(): staged data   -> Change Request, driven
+*                                  step by step through ZIF_MDG_0G_CU
 *           process()            : both, in order
 ************************************************************************
 
   PUBLIC SECTION.
 
-    TYPES ty_t_staging TYPE zcl_mdg_0g_cr_writer=>ty_t_staging.
+    TYPES ty_t_staging TYPE zif_mdg_0g_cu=>tt_buffer.
 
     CONSTANTS c_entity_pctr TYPE usmd_entity VALUE 'PCTR' ##NO_TEXT.
 
@@ -24,7 +25,7 @@ CLASS zcl_mdg_0g_pctr_wrapper DEFINITION
                 iv_edition       TYPE usmd_edition OPTIONAL
       RETURNING VALUE(rt_staging) TYPE ty_t_staging.
 
-    "! Create the follow-up CR from staged data and fire it.
+    "! Create the change request from staged data and fire it.
     METHODS create_follow_up_cr
       IMPORTING it_staging   TYPE ty_t_staging
                 iv_source_cr TYPE usmd_crequest OPTIONAL
@@ -85,14 +86,30 @@ CLASS zcl_mdg_0g_pctr_wrapper IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    NEW zcl_mdg_0g_cr_writer( )->create_and_fire(
-      EXPORTING it_staging       = it_staging
-                iv_crequest_type = resolve_cr_type( it_staging )
-                iv_description   = resolve_description( iv_source_cr )
-                iv_source_cr     = iv_source_cr
-                iv_commit        = iv_commit
-      IMPORTING ev_crequest      = ev_crequest
-                et_message       = et_message ).
+    DATA(lo_cu) = zcl_mdg_0g_crud=>get_instance( ).
+
+    ev_crequest = lo_cu->create_crequest(
+      iv_crequest_type = resolve_cr_type( it_staging )
+      iv_description   = resolve_description( iv_source_cr ) ).
+    IF ev_crequest IS INITIAL.
+      et_message = lo_cu->get_messages( ).
+      RETURN.
+    ENDIF.
+
+    lo_cu->enqueue_cr( ).
+
+    LOOP AT it_staging ASSIGNING FIELD-SYMBOL(<ls_stg>).
+      lo_cu->write_data( iv_entity = <ls_stg>-entity
+                         iv_struct = <ls_stg>-struct
+                         ir_data   = <ls_stg>-data ).
+      lo_cu->enqueue_entity( iv_entity = <ls_stg>-entity ).
+    ENDLOOP.
+
+    lo_cu->flush( ).
+    lo_cu->save( ).
+    lo_cu->commit( iv_commit = iv_commit ).
+
+    et_message = lo_cu->get_messages( ).
 
   ENDMETHOD.
 
@@ -110,9 +127,10 @@ CLASS zcl_mdg_0g_pctr_wrapper IMPLEMENTATION.
         RETURN.                                       " TODO decision 7: logging
     ENDTRY.
 
-*   ZIF_MDG_0G_SRV_MAPPER~TS_TARGET (entity + recs) -> CR writer staging (entity + data)
+*   mapper targets (entity + struct + recs) -> CR session buffer rows
     LOOP AT lt_targets ASSIGNING FIELD-SYMBOL(<ls_target>).
       APPEND VALUE #( entity = <ls_target>-entity
+                      struct = <ls_target>-struct
                       data   = <ls_target>-recs ) TO rt_staging.
     ENDLOOP.
 

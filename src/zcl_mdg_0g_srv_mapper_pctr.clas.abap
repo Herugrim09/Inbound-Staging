@@ -211,7 +211,9 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 
     ENDLOOP.
 
-    INSERT VALUE #( entity = 'PCCCASS' recs = lr_tab ) INTO ct_targets.
+    INSERT VALUE #( entity = 'PCCCASS'
+                    struct = '/MDG/_S_0G_PP_PCCCASS'
+                    recs   = lr_tab ) INTO ct_targets.
 
   ENDMETHOD.
 

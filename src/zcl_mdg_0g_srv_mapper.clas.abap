@@ -112,7 +112,9 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
     finalize_main( EXPORTING is_message = is_message CHANGING cs_main = <ls_main> ).
 
     INSERT <ls_main> INTO TABLE <lt_main>.
-    INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( ) recs = lr_tab )
+    INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( )
+                    struct = zif_mdg_0g_srv_mapper~get_main_struct( )
+                    recs   = lr_tab )
       INTO TABLE et_targets.
 
 *   --- dependent sub-entities ---
@@ -125,7 +127,9 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
     IF zif_mdg_0g_srv_mapper~get_text_struct( ) IS NOT INITIAL.
       DATA(lr_txt) = build_texts( is_message = is_message it_keys = lt_keys ).
       IF lr_txt IS BOUND.
-        INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( ) recs = lr_txt )
+        INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( )
+                        struct = zif_mdg_0g_srv_mapper~get_text_struct( )
+                        recs   = lr_txt )
           INTO TABLE et_targets.
       ENDIF.
     ENDIF.
