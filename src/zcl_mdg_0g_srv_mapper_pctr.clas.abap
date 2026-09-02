@@ -77,9 +77,9 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 
       ( src_path = 'ATTRIBUTES'
         mapping  = VALUE #(
-          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'                dstname = 'PCTRDEPT'  )
-          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID'        dstname = 'PCTRLSYS'  )
-          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED_INDICATO' dstname = 'PCTRLKIND' ) ) )
+          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'         dstname = 'PCTRDEPT'  )
+          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID' dstname = 'PCTRLSYS'  )
+          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED'   dstname = 'PCTRLKIND' ) ) )
 
       ( src_path = 'ATTRIBUTES-TAX_JURISDICTION_CODE'
         mapping  = VALUE #( ( level = 0 kind = 1 srcname = 'CONTENT' dstname = 'PCTRTXJCD' ) ) )
@@ -150,12 +150,16 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
     ASSIGN COMPONENT 'PCTRCCALL' OF STRUCTURE cs_main TO <ccall>.
     IF <ccall> IS ASSIGNED.
       DATA(lr_ca) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT' ).
-      DATA(lr_cm) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT_LIST_COMPLE' ).
+      DATA(lr_cm) = resolve_path( is_root = is_message iv_path = 'COMPANY_ASSIGNMENT_CMPL' ).
       IF lr_ca IS BOUND AND lr_cm IS BOUND.
         ASSIGN lr_ca->* TO <ca>.
         ASSIGN lr_cm->* TO <cmpl>.
         IF <ca> IS ASSIGNED AND <cmpl> IS ASSIGNED.
-          IF <ca> IS INITIAL AND <cmpl> = abap_true.
+          " SAPPLCO_INDICATOR is CHAR 5 ('true'/'false'/'X'/'1'/...) - treat
+          " anything that is neither blank nor a false marker as "complete"
+          IF <ca> IS INITIAL
+             AND <cmpl> IS NOT INITIAL
+             AND <cmpl> <> 'false' AND <cmpl> <> '0'.
             <ccall> = 'X'.
           ENDIF.
         ENDIF.
