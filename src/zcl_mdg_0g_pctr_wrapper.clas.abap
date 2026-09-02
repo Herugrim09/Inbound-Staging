@@ -43,7 +43,7 @@ CLASS zcl_mdg_0g_pctr_wrapper DEFINITION
 
   PRIVATE SECTION.
 
-    CONSTANTS c_default_cr_type TYPE usmd_crequest_type VALUE 'ZP_PCTR01' ##NO_TEXT.   " TODO decision 5
+    CONSTANTS c_default_cr_type TYPE usmd_crequest_type VALUE 'ZPCTAP1' ##NO_TEXT.   " Profit Center inbound CR type
 
     METHODS resolve_cr_type
       IMPORTING it_staging    TYPE ty_t_staging
@@ -138,7 +138,7 @@ CLASS zcl_mdg_0g_pctr_wrapper IMPLEMENTATION.
 
 
   METHOD resolve_cr_type.
-    " TODO (decision 5): fixed / from Customizing / derived (segment, CoA, ...).
+    " Fixed CR type for the inbound scenario (decision 5).
     rv_type = c_default_cr_type.
   ENDMETHOD.
 
