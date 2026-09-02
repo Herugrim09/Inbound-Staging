@@ -64,6 +64,14 @@ CLASS zcl_mdg_0g_srv_mapper DEFINITION
                 it_map    TYPE cl_abap_corresponding=>mapping_table
       RETURNING VALUE(ro) TYPE REF TO cl_abap_corresponding.
 
+    "! get_corr + execute for one group, guarded against CX_CORR_DYN_ERROR
+    "! (an invalid component mapping only skips that group).
+    METHODS run_group
+      IMPORTING iv_key TYPE string
+                is_src TYPE any
+                it_map TYPE cl_abap_corresponding=>mapping_table
+      CHANGING  cs_dst TYPE any.
+
   PRIVATE SECTION.
 
     TYPES:
@@ -152,12 +160,10 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      DATA(lo_corr) = get_corr( iv_key = <group>-src_path
-                                is_src = <src>
-                                is_dst = cs_target
-                                it_map = <group>-mapping ).
-
-      lo_corr->execute( EXPORTING source = <src> CHANGING destination = cs_target ).
+      run_group( EXPORTING iv_key = <group>-src_path
+                           is_src = <src>
+                           it_map = <group>-mapping
+                 CHANGING  cs_dst = cs_target ).
 
     ENDLOOP.
 
@@ -176,11 +182,34 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
     DATA(lt_map) = it_map.
     APPEND VALUE #( level = 0 kind = cl_abap_corresponding=>mapping_except_all ) TO lt_map.
 
-    ro = cl_abap_corresponding=>create( source      = is_src
-                                        destination = is_dst
-                                        mapping     = lt_map ).
+    TRY.
+        ro = cl_abap_corresponding=>create( source      = is_src
+                                            destination = is_dst
+                                            mapping     = lt_map ).
+      CATCH cx_corr_dyn_error.
+        CLEAR ro.               " invalid component mapping -> no object, caller skips
+        RETURN.
+    ENDTRY.
 
     INSERT VALUE #( corr_key = iv_key obj = ro ) INTO TABLE mt_corr.
+
+  ENDMETHOD.
+
+
+  METHOD run_group.
+
+    TRY.
+        DATA(lo_corr) = get_corr( iv_key = iv_key
+                                  is_src = is_src
+                                  is_dst = cs_dst
+                                  it_map = it_map ).
+        IF lo_corr IS BOUND.
+          lo_corr->execute( EXPORTING source = is_src CHANGING destination = cs_dst ).
+        ENDIF.
+      CATCH cx_corr_dyn_error.
+*       invalid component mapping for this group -> skip it
+*       TODO: surface via a message channel once the mapper has one
+    ENDTRY.
 
   ENDMETHOD.
 
@@ -235,8 +264,8 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
       IF lr_desc IS BOUND.
         ASSIGN lr_desc->* TO <desc>.
         IF <desc> IS ASSIGNED.
-          get_corr( iv_key = 'TXT_DESCRIPTION' is_src = <desc> is_dst = <ls> it_map = lt_desc_map
-          )->execute( EXPORTING source = <desc> CHANGING destination = <ls> ).
+          run_group( EXPORTING iv_key = 'TXT_DESCRIPTION' is_src = <desc> it_map = lt_desc_map
+                     CHANGING  cs_dst = <ls> ).
         ENDIF.
       ENDIF.
 
@@ -244,8 +273,8 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
       IF lr_name IS BOUND.
         ASSIGN lr_name->* TO <name>.
         IF <name> IS ASSIGNED.
-          get_corr( iv_key = 'TXT_NAME' is_src = <name> is_dst = <ls> it_map = lt_name_map
-          )->execute( EXPORTING source = <name> CHANGING destination = <ls> ).
+          run_group( EXPORTING iv_key = 'TXT_NAME' is_src = <name> it_map = lt_name_map
+                     CHANGING  cs_dst = <ls> ).
         ENDIF.
       ENDIF.
 

@@ -202,8 +202,8 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
       CLEAR <ls>.
       set_keys( EXPORTING it_keys = it_keys CHANGING cs_target = <ls> ).
 
-      get_corr( iv_key = 'PCCCASS_ROW' is_src = <row> is_dst = <ls> it_map = lt_map
-      )->execute( EXPORTING source = <row> CHANGING destination = <ls> ).
+      run_group( EXPORTING iv_key = 'PCCCASS_ROW' is_src = <row> it_map = lt_map
+                 CHANGING  cs_dst = <ls> ).
 
 *     for now: every delivered row means "assigned"
       ASSIGN COMPONENT 'PCTRCCASS' OF STRUCTURE <ls> TO <f>.
