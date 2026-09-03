@@ -351,7 +351,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
         RETURN.
     ENDTRY.
 
-    FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <tab> TYPE ANY TABLE.       " Gov API key / key+attr tables are keyed (hashed/sorted)
     ASSIGN lr->* TO <tab>.
     IF <tab> IS NOT ASSIGNED.
       RETURN.
