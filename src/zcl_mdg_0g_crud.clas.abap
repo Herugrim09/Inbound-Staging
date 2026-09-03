@@ -139,7 +139,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    MOVE-CORRESPONDING it_data TO <lt>.
+    <lt> = CORRESPONDING #( it_data ).
 
     write_data( iv_entity = iv_entity
                 iv_struct = iv_struct
@@ -357,7 +357,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    MOVE-CORRESPONDING it_src TO <tab>.
+    <tab> = CORRESPONDING #( it_src ).
     rr_tab = lr.
 
   ENDMETHOD.
