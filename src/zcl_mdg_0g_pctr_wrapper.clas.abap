@@ -102,8 +102,10 @@ CLASS zcl_mdg_0g_pctr_wrapper IMPLEMENTATION.
       lo_cu->write_data( iv_entity = <ls_stg>-entity
                          iv_struct = <ls_stg>-struct
                          ir_data   = <ls_stg>-data ).
-      lo_cu->enqueue_entity( iv_entity = <ls_stg>-entity ).
     ENDLOOP.
+
+    " only the leading PCTR entity is locked; PCCCASS / texts ride along with it
+    lo_cu->enqueue_entity( iv_entity = c_entity_pctr ).
 
     lo_cu->flush( ).
     lo_cu->save( ).

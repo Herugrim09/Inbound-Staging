@@ -186,15 +186,6 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " only entity type 1 (own key + attributes) can be locked via the Gov API;
-    " other entity types are covered through their leading entity
-    cl_usmd_model=>get_instance( EXPORTING i_usmd_model = mv_model
-                                 IMPORTING eo_instance  = DATA(lo_model) ).
-    IF lo_model IS BOUND
-       AND lo_model->get_entity_type( i_entity = iv_entity ) <> '1'.
-      RETURN.
-    ENDIF.
-
     FIELD-SYMBOLS <src> TYPE ANY TABLE.
 
     LOOP AT mt_buffer ASSIGNING FIELD-SYMBOL(<buf>) WHERE entity = iv_entity.
