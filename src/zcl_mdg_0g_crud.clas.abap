@@ -109,7 +109,9 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
   METHOD create_crequest.
 
-    clear_buffers( ).
+    " keep MT_BUFFER: for a bulk it is already filled by write_data before the
+    " CR exists. Callers that own the session reset it via clear_buffers( ).
+    CLEAR: mt_message, mv_crequest.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND.

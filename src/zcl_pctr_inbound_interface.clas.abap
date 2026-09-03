@@ -18,11 +18,13 @@ CLASS ZCL_PCTR_INBOUND_INTERFACE IMPLEMENTATION.
   method if_ke1_se_prctrrplctnbulkrq~inbound_processing.
 
 *   Entry point of the Profit Center replication inbound service.
-*   Delegates to the wrapper: proxy payload -> 0G staging -> Change Request.
+*   The framework splits the bulk and calls this once per record, so the
+*   wrapper is a singleton that buffers the records and only creates + fires
+*   the CR on the last call (EV_CREQUEST is filled on that call only).
 
     data lt_message type usmd_t_message.
 
-    new zcl_mdg_0g_pctr_wrapper( )->process(
+    zcl_mdg_0g_pctr_wrapper=>get_instance( )->process(
       exporting is_request  = in-profit_centre       " SAPPLCO_PRCTR_RQ_PRCTR node
       importing ev_crequest = data(lv_crequest)
                 et_message  = lt_message ).

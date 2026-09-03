@@ -76,8 +76,8 @@ The delivered mapping `USMDZ6_0G_PCTR` maps **staging → replication request (o
 
 Skeletons in place under [`src/`](src/):
 
-- `ZCL_MDG_0G_CR_WRITER` — `create_and_fire` implemented against the reference call sequence.
-- `ZCL_MDG_0G_PCTR_WRAPPER` — `map_to_staging` / `create_follow_up_cr` / `process` implemented; `get_source_rows`, `resolve_cr_type`, `resolve_description` are stubs.
+- `ZCL_MDG_0G_CRUD` (`ZIF_MDG_0G_CU`) — stateful Gov API session; `create_crequest` keeps the entity buffer so a bulk can be staged before the CR exists.
+- `ZCL_MDG_0G_PCTR_WRAPPER` — **singleton**. The inbound service splits the bulk into one BAdI call per record; `process()` maps each record into the `ZCL_MDG_0G_CRUD` buffer and, on the **last** record, creates + fires **one** CR for the whole bulk. "Last record" is detected by counting the message nodes in the inbound payload (`count_messages`); if that count can't be read, each call falls back to its own CR. `resolve_cr_type`, `resolve_description` are stubs.
 - `ZCL_MDG_0G_TRANSFORM_IN` — `split_co_object`, `lang_iso_to_spras`, `date_ext_to_internal` implemented.
 - `ZCL_MDG_0G_PCTR_INB_BADI` — delegate stub; real BAdI interface not yet attached.
 
