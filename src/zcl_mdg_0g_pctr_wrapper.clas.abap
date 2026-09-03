@@ -1,7 +1,7 @@
-CLASS zcl_mdg_0g_pctr_wrapper DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PUBLIC.
+class ZCL_MDG_0G_PCTR_WRAPPER definition
+  public
+  final
+  create public .
 
 ************************************************************************
 * Project : Inbound-Staging
@@ -12,35 +12,38 @@ CLASS zcl_mdg_0g_pctr_wrapper DEFINITION
 *                                  step by step through ZIF_MDG_0G_CU
 *           process()            : both, in order
 ************************************************************************
+public section.
 
-  PUBLIC SECTION.
+  types TY_T_STAGING type ZIF_MDG_0G_CU=>TT_BUFFER .
 
-    TYPES ty_t_staging TYPE zif_mdg_0g_cu=>tt_buffer.
-
-    CONSTANTS c_entity_pctr TYPE usmd_entity VALUE 'PCTR' ##NO_TEXT.
+  constants C_ENTITY_PCTR type USMD_ENTITY value 'PCTR' ##NO_TEXT.
 
     "! Map the inbound Profit Center payload to 0G staging tables (one entry per entity).
-    METHODS map_to_staging
-      IMPORTING is_request       TYPE any
-                iv_edition       TYPE usmd_edition OPTIONAL
-      RETURNING VALUE(rt_staging) TYPE ty_t_staging.
-
+  methods MAP_TO_STAGING
+    importing
+      !IS_REQUEST type ANY
+      !IV_EDITION type USMD_EDITION optional
+    returning
+      value(RT_STAGING) type TY_T_STAGING .
     "! Create the change request from staged data and fire it.
-    METHODS create_follow_up_cr
-      IMPORTING it_staging   TYPE ty_t_staging
-                iv_source_cr TYPE usmd_crequest OPTIONAL
-                iv_commit    TYPE abap_bool DEFAULT abap_false
-      EXPORTING ev_crequest  TYPE usmd_crequest
-                et_message   TYPE usmd_t_message.
-
+  methods CREATE_FOLLOW_UP_CR
+    importing
+      !IT_STAGING type TY_T_STAGING
+      !IV_SOURCE_CR type USMD_CREQUEST optional
+      !IV_COMMIT type ABAP_BOOL default ABAP_FALSE
+    exporting
+      !EV_CREQUEST type USMD_CREQUEST
+      !ET_MESSAGE type USMD_T_MESSAGE .
     "! One shot: map_to_staging + create_follow_up_cr.
-    METHODS process
-      IMPORTING is_request   TYPE any
-                iv_source_cr TYPE usmd_crequest OPTIONAL
-                iv_commit    TYPE abap_bool DEFAULT abap_false
-      EXPORTING ev_crequest  TYPE usmd_crequest
-                et_message   TYPE usmd_t_message.
-
+  methods PROCESS
+    importing
+      !IS_REQUEST type ANY
+      !IV_SOURCE_CR type USMD_CREQUEST optional
+      !IV_COMMIT type ABAP_BOOL default ABAP_TRUE
+    exporting
+      !EV_CREQUEST type USMD_CREQUEST
+      !ET_MESSAGE type USMD_T_MESSAGE .
+protected section.
   PRIVATE SECTION.
 
     CONSTANTS c_default_cr_type TYPE usmd_crequest_type VALUE 'ZPCTAP1' ##NO_TEXT.   " Profit Center inbound CR type
@@ -57,7 +60,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_mdg_0g_pctr_wrapper IMPLEMENTATION.
+CLASS ZCL_MDG_0G_PCTR_WRAPPER IMPLEMENTATION.
 
 
   METHOD process.
@@ -149,6 +152,4 @@ CLASS zcl_mdg_0g_pctr_wrapper IMPLEMENTATION.
     " TODO: mirror create_crequest_acc_company -> "<source text> / <creator> / <tag>".
     rv_text = |Profit Center inbound { sy-datum } { sy-uzeit }|.
   ENDMETHOD.
-
-
 ENDCLASS.
