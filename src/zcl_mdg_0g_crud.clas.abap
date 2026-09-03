@@ -107,9 +107,9 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~create_crequest.
+  METHOD create_crequest.
 
-    zif_mdg_0g_cu~clear_buffers( ).
+    clear_buffers( ).
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND.
@@ -128,7 +128,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~create_ref.
+  METHOD create_ref.
 
     DATA lr_tab TYPE REF TO data.
     CREATE DATA lr_tab TYPE STANDARD TABLE OF (iv_struct).
@@ -141,14 +141,14 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
     MOVE-CORRESPONDING it_data TO <lt>.
 
-    zif_mdg_0g_cu~write_data( iv_entity = iv_entity
-                             iv_struct = iv_struct
-                             ir_data   = lr_tab ).
+    write_data( iv_entity = iv_entity
+                iv_struct = iv_struct
+                ir_data   = lr_tab ).
 
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~write_data.
+  METHOD write_data.
     IF ir_data IS NOT BOUND.
       RETURN.
     ENDIF.
@@ -158,7 +158,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~enqueue_cr.
+  METHOD enqueue_cr.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND OR mv_crequest IS INITIAL.
@@ -174,7 +174,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~enqueue_entity.
+  METHOD enqueue_entity.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND OR mv_crequest IS INITIAL.
@@ -219,7 +219,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~flush.
+  METHOD flush.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND OR mv_crequest IS INITIAL.
@@ -270,7 +270,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~save.
+  METHOD save.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND OR mv_crequest IS INITIAL.
@@ -287,7 +287,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~commit.
+  METHOD commit.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND OR mv_crequest IS INITIAL.
@@ -317,12 +317,12 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~clear_buffers.
+  METHOD clear_buffers.
     CLEAR: mt_buffer, mt_message, mv_crequest.
   ENDMETHOD.
 
 
-  METHOD zif_mdg_0g_cu~get_messages.
+  METHOD get_messages.
     rt_message = mt_message.
   ENDMETHOD.
 
