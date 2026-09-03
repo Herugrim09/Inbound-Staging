@@ -116,10 +116,15 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " edition is mandatory - fall back to the always-open DUMMY edition
+    DATA(lv_edition) = COND usmd_edition( WHEN iv_edition IS NOT INITIAL
+                                          THEN iv_edition
+                                          ELSE 'DUMMY' ).
+
     TRY.
         rv_crequest = li_api->create_crequest( iv_crequest_type = iv_crequest_type
                                                iv_description   = iv_description
-                                               iv_edition       = iv_edition ).
+                                               iv_edition       = lv_edition ).
         mv_crequest = rv_crequest.
       CATCH cx_usmd_gov_api INTO DATA(lx).
         collect( it_messages = lx->mt_messages ix_error = lx ).
@@ -178,6 +183,15 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
     DATA(li_api) = api( ).
     IF li_api IS NOT BOUND OR mv_crequest IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " only entity type 1 (own key + attributes) can be locked via the Gov API;
+    " other entity types are covered through their leading entity
+    cl_usmd_model=>get_instance( EXPORTING i_usmd_model = mv_model
+                                 IMPORTING eo_instance  = DATA(lo_model) ).
+    IF lo_model IS BOUND
+       AND lo_model->get_entity_type( i_entity = iv_entity ) <> '1'.
       RETURN.
     ENDIF.
 
