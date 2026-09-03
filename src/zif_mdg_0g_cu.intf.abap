@@ -23,8 +23,7 @@ INTERFACE zif_mdg_0g_cu
     END OF ts_buffer,
     tt_buffer TYPE STANDARD TABLE OF ts_buffer WITH DEFAULT KEY.
 
-  "! Create the change request (resets messages + CR id; keeps the entity
-  "! buffer, which for a bulk is filled by write_data before this call).
+  "! Create the change request (also resets the internal buffer / messages).
   METHODS create_crequest
     IMPORTING iv_crequest_type  TYPE usmd_crequest_type
               iv_description    TYPE usmd_txtlg
