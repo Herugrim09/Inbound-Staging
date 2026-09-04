@@ -157,8 +157,7 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
       <regpc> = <land1>.
     ENDIF.
 
-*   PCTRLKIND (lock indicator) is the inverse of POSTING_USAGE_ALLOWED:
-*   posting allowed -> not locked (' '), posting not allowed -> locked ('X')
+*   PCTRLKIND (lock indicator): SAPPLCO indicator 'true'/'false' -> 'X' / ' '
     ASSIGN COMPONENT 'PCTRLKIND' OF STRUCTURE cs_main TO <lkind>.
     IF <lkind> IS ASSIGNED.
       DATA(lr_pua) = resolve_path( is_root = is_message
@@ -166,7 +165,7 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
       IF lr_pua IS BOUND.
         ASSIGN lr_pua->* TO FIELD-SYMBOL(<pua>).
         IF <pua> IS ASSIGNED.
-          <lkind> = COND xfeld( WHEN indicator_to_flag( <pua> ) = 'X' THEN space ELSE 'X' ).
+          <lkind> = indicator_to_flag( <pua> ).
         ENDIF.
       ENDIF.
     ENDIF.
