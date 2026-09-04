@@ -190,6 +190,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
     ENDIF.
 
     FIELD-SYMBOLS <src> TYPE ANY TABLE.
+    FIELD-SYMBOLS <key> TYPE ANY TABLE.
 
     LOOP AT mt_buffer ASSIGNING FIELD-SYMBOL(<buf>) WHERE entity = iv_entity.
 
@@ -201,16 +202,20 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      DATA(lr_key) = create_ref( iv_entity = iv_entity
-                                 iv_struct = gc_struct-key
-                                 it_data   = <src> ).
-      IF lr_key IS NOT BOUND.
-        CONTINUE.
-      ENDIF.
-      ASSIGN lr_key->* TO FIELD-SYMBOL(<key>).
+      DATA lr_key TYPE REF TO data.
+      TRY.
+          li_api->create_data_reference( EXPORTING iv_entity_name = iv_entity
+                                                   iv_struct      = li_api->gc_struct_key
+                                         IMPORTING er_table       = lr_key ).
+        CATCH cx_usmd_gov_api INTO DATA(lx_ref).
+          collect( it_messages = lx_ref->mt_messages ix_error = lx_ref ).
+          CONTINUE.
+      ENDTRY.
+      ASSIGN lr_key->* TO <key>.
       IF <key> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
+      <key> = CORRESPONDING #( <src> ).
 
       TRY.
           li_api->enqueue_entity( iv_crequest_id = mv_crequest
