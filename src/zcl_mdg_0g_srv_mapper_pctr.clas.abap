@@ -84,11 +84,12 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 *   group rooted one level deeper (CL_ABAP_CORRESPONDING maps same level only).
     rt_groups = VALUE #(
 
+*     POSTING_USAGE_ALLOWED -> PCTRLKIND is an indicator ('true'/'false'):
+*     converted in finalize_main, not by CORRESPONDING (which yields 'f').
       ( src_path = 'ATTRIBUTES'
         mapping  = VALUE #(
-          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'         dstname = 'PCTRDEPT'  )
-          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID' dstname = 'PCTRLSYS'  )
-          ( level = 0 kind = 1 srcname = 'POSTING_USAGE_ALLOWED'   dstname = 'PCTRLKIND' ) ) )
+          ( level = 0 kind = 1 srcname = 'DEPARTMENT_NAME'         dstname = 'PCTRDEPT' )
+          ( level = 0 kind = 1 srcname = 'HOME_BUSINESS_SYSTEM_ID' dstname = 'PCTRLSYS' ) ) )
 
       ( src_path = 'ATTRIBUTES-TAX_JURISDICTION_CODE'
         mapping  = VALUE #( ( level = 0 kind = 1 srcname = 'CONTENT' dstname = 'PCTRTXJCD' ) ) )
@@ -144,6 +145,7 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
 
     FIELD-SYMBOLS: <land1> TYPE any,
                    <regpc> TYPE any,
+                   <lkind> TYPE any,
                    <ccall> TYPE any,
                    <ca>    TYPE ANY TABLE,
                    <cmpl>  TYPE any.
@@ -153,6 +155,20 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
     ASSIGN COMPONENT 'REGION_PC' OF STRUCTURE cs_main TO <regpc>.
     IF <land1> IS ASSIGNED AND <regpc> IS ASSIGNED.
       <regpc> = <land1>.
+    ENDIF.
+
+*   PCTRLKIND (lock indicator) is the inverse of POSTING_USAGE_ALLOWED:
+*   posting allowed -> not locked (' '), posting not allowed -> locked ('X')
+    ASSIGN COMPONENT 'PCTRLKIND' OF STRUCTURE cs_main TO <lkind>.
+    IF <lkind> IS ASSIGNED.
+      DATA(lr_pua) = resolve_path( is_root = is_message
+                                   iv_path = 'ATTRIBUTES-POSTING_USAGE_ALLOWED' ).
+      IF lr_pua IS BOUND.
+        ASSIGN lr_pua->* TO FIELD-SYMBOL(<pua>).
+        IF <pua> IS ASSIGNED.
+          <lkind> = COND xfeld( WHEN indicator_to_flag( <pua> ) = 'X' THEN space ELSE 'X' ).
+        ENDIF.
+      ENDIF.
     ENDIF.
 
 *   PCTRCCALL: no individual assignments + list flagged complete => 'X'

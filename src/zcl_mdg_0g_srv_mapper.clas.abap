@@ -56,6 +56,18 @@ CLASS zcl_mdg_0g_srv_mapper DEFINITION
       EXPORTING ev_coarea TYPE char4
                 ev_coobj  TYPE usmd_value.
 
+    "! 2-char ISO language ('en') -> 1-char SAP language key ('E').
+    "! Falls back to the uppercased first character when unknown.
+    METHODS lang_iso_to_sap
+      IMPORTING iv_iso          TYPE clike
+      RETURNING VALUE(rv_spras) TYPE spras.
+
+    "! SOA / SAPPLCO indicator ('true' / 'X' / '1' -> 'X', anything else
+    "! -> ' ') for MDG checkbox attributes.
+    METHODS indicator_to_flag
+      IMPORTING iv_value       TYPE clike
+      RETURNING VALUE(rv_flag) TYPE xfeld.
+
     "! Get (cached) or create a CL_ABAP_CORRESPONDING instance for one group.
     METHODS get_corr
       IMPORTING iv_key    TYPE string
@@ -275,9 +287,10 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
     ENDIF.
 
 *   standard NAME row layout: DESCRIPTION-CONTENT/-LANGUAGE_CODE, NAME-CONTENT
+*   LANGU is set from the source separately - CORRESPONDING would truncate
+*   the 2-char ISO code ('en') into the 1-char LANGU field ('e').
     DATA(lt_desc_map) = VALUE cl_abap_corresponding=>mapping_table(
-      ( level = 0 kind = 1 srcname = 'CONTENT'       dstname = 'TXTMI' )
-      ( level = 0 kind = 1 srcname = 'LANGUAGE_CODE' dstname = 'LANGU' ) ).
+      ( level = 0 kind = 1 srcname = 'CONTENT' dstname = 'TXTMI' ) ).
     DATA(lt_name_map) = VALUE cl_abap_corresponding=>mapping_table(
       ( level = 0 kind = 1 srcname = 'CONTENT' dstname = 'TXTSH' ) ).
 
@@ -295,6 +308,12 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
         IF <desc> IS ASSIGNED.
           run_group( EXPORTING iv_key = 'TXT_DESCRIPTION' is_src = <desc> it_map = lt_desc_map
                      CHANGING  cs_dst = <ls> ).
+
+          ASSIGN COMPONENT 'LANGUAGE_CODE' OF STRUCTURE <desc> TO FIELD-SYMBOL(<iso>).
+          ASSIGN COMPONENT 'LANGU'         OF STRUCTURE <ls>   TO FIELD-SYMBOL(<langu>).
+          IF <iso> IS ASSIGNED AND <langu> IS ASSIGNED AND <iso> IS NOT INITIAL.
+            <langu> = lang_iso_to_sap( <iso> ).
+          ENDIF.
         ENDIF.
       ENDIF.
 
@@ -366,6 +385,39 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
     ev_coarea = lv_id(4).
     CONDENSE ev_coarea.
     ev_coobj  = lv_id+4(10).
+
+  ENDMETHOD.
+
+
+  METHOD lang_iso_to_sap.
+
+    DATA lv_iso TYPE laiso.
+    lv_iso = to_upper( condense( CONV string( iv_iso ) ) ).
+    IF lv_iso IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    CALL FUNCTION 'CONVERSION_EXIT_ISOLA_INPUT'
+      EXPORTING
+        input            = lv_iso
+      IMPORTING
+        output           = rv_spras
+      EXCEPTIONS
+        unknown_language = 1
+        OTHERS           = 2.
+
+    IF sy-subrc <> 0 OR rv_spras IS INITIAL.
+      rv_spras = to_upper( lv_iso(1) ).            " best effort
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD indicator_to_flag.
+
+    DATA(lv) = to_lower( condense( CONV string( iv_value ) ) ).
+    rv_flag = COND xfeld( WHEN lv = 'true' OR lv = 'x' OR lv = '1'
+                          THEN 'X' ELSE space ).
 
   ENDMETHOD.
 
