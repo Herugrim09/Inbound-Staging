@@ -34,6 +34,8 @@ public section.
     for ZIF_MDG_0G_CU~SAVE .
   aliases WRITE_DATA
     for ZIF_MDG_0G_CU~WRITE_DATA .
+  aliases GC_STRUCT
+    for ZIF_MDG_0G_CU~GC_STRUCT .
   aliases TS_BUFFER
     for ZIF_MDG_0G_CU~TS_BUFFER .
   aliases TT_BUFFER
@@ -62,15 +64,6 @@ private section.
   methods API
     returning
       value(RI_API) type ref to IF_USMD_GOV_API .
-    "! Build a Gov-API-typed table (key or key+attr) for an entity and
-    "! MOVE-CORRESPONDING the buffered rows into it.
-  methods TO_GOV_TABLE
-    importing
-      !IV_ENTITY type USMD_ENTITY
-      !IV_WITH_ATTR type ABAP_BOOL
-      !IT_SRC type ANY TABLE
-    returning
-      value(RR_TAB) type ref to DATA .
   methods COLLECT
     importing
       !IT_MESSAGES type USMD_T_MESSAGE optional
@@ -135,20 +128,30 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
   METHOD create_ref.
 
-    DATA lr_tab TYPE REF TO data.
-    CREATE DATA lr_tab TYPE STANDARD TABLE OF (iv_struct).
-
-    FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
-    ASSIGN lr_tab->* TO <lt>.
-    IF <lt> IS NOT ASSIGNED.
+    DATA(li_api) = api( ).
+    IF li_api IS NOT BOUND.
       RETURN.
     ENDIF.
 
-    <lt> = CORRESPONDING #( it_data ).
+    TRY.
+        li_api->create_data_reference( EXPORTING iv_entity_name = iv_entity
+                                                 iv_struct      = iv_struct
+                                       IMPORTING er_table       = rr_data ).
+      CATCH cx_usmd_gov_api INTO DATA(lx).
+        collect( it_messages = lx->mt_messages ix_error = lx ).
+        CLEAR rr_data.
+        RETURN.
+    ENDTRY.
 
-    write_data( iv_entity = iv_entity
-                iv_struct = iv_struct
-                ir_data   = lr_tab ).
+    IF it_data IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    FIELD-SYMBOLS <tab> TYPE ANY TABLE.
+    ASSIGN rr_data->* TO <tab>.
+    IF <tab> IS ASSIGNED.
+      <tab> = CORRESPONDING #( it_data ).
+    ENDIF.
 
   ENDMETHOD.
 
@@ -198,9 +201,9 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      DATA(lr_key) = to_gov_table( iv_entity    = iv_entity
-                                   iv_with_attr = abap_false
-                                   it_src       = <src> ).
+      DATA(lr_key) = create_ref( iv_entity = iv_entity
+                                 iv_struct = gc_struct-key
+                                 it_data   = <src> ).
       IF lr_key IS NOT BOUND.
         CONTINUE.
       ENDIF.
@@ -231,36 +234,24 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    FIELD-SYMBOLS <src> TYPE ANY TABLE.
+    FIELD-SYMBOLS <data> TYPE ANY TABLE.
 
     LOOP AT mt_buffer ASSIGNING FIELD-SYMBOL(<buf>).
 
       IF <buf>-data IS NOT BOUND.
         CONTINUE.
       ENDIF.
-      ASSIGN <buf>-data->* TO <src>.
-      IF <src> IS NOT ASSIGNED.
+      ASSIGN <buf>-data->* TO <data>.
+      IF <data> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
 
-*     TODO: text staging (e.g. /MDG/_ST_0G_ES_* - key incl. LANGU) is not an
-*     ordinary write_entity target; route it via the text API when <buf>-struct
-*     identifies a text structure.
-      DATA(lr_ka) = to_gov_table( iv_entity    = <buf>-entity
-                                  iv_with_attr = abap_true
-                                  it_src       = <src> ).
-      IF lr_ka IS NOT BOUND.
-        CONTINUE.
-      ENDIF.
-      ASSIGN lr_ka->* TO FIELD-SYMBOL(<ka>).
-      IF <ka> IS NOT ASSIGNED.
-        CONTINUE.
-      ENDIF.
-
+*     DATA is already the create_data_reference table for <buf>-struct -
+*     the framework reads its type and writes it accordingly
       TRY.
           li_api->write_entity( iv_crequest_id = mv_crequest
                                 iv_entity_name = <buf>-entity
-                                it_data        = <ka> ).
+                                it_data        = <data> ).
         CATCH cx_usmd_gov_api_entity_write INTO DATA(lx_write).
           collect( it_messages = lx_write->mt_messages ix_error = lx_write ).
         CATCH cx_usmd_gov_api INTO DATA(lx).
@@ -329,42 +320,6 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
   METHOD get_messages.
     rt_message = mt_message.
-  ENDMETHOD.
-
-
-  METHOD to_gov_table.
-
-    DATA(li_api) = api( ).
-    IF li_api IS NOT BOUND.
-      RETURN.
-    ENDIF.
-
-    DATA lv_struct LIKE li_api->gc_struct_key.
-    IF iv_with_attr = abap_true.
-      lv_struct = li_api->gc_struct_key_attr.
-    ELSE.
-      lv_struct = li_api->gc_struct_key.
-    ENDIF.
-
-    DATA lr TYPE REF TO data.
-    TRY.
-        li_api->create_data_reference( EXPORTING iv_entity_name = iv_entity
-                                                 iv_struct      = lv_struct
-                                       IMPORTING er_table       = lr ).
-      CATCH cx_usmd_gov_api INTO DATA(lx).
-        collect( it_messages = lx->mt_messages ix_error = lx ).
-        RETURN.
-    ENDTRY.
-
-    FIELD-SYMBOLS <tab> TYPE ANY TABLE.       " Gov API key / key+attr tables are keyed (hashed/sorted)
-    ASSIGN lr->* TO <tab>.
-    IF <tab> IS NOT ASSIGNED.
-      RETURN.
-    ENDIF.
-
-    <tab> = CORRESPONDING #( it_src ).
-    rr_tab = lr.
-
   ENDMETHOD.
 
 

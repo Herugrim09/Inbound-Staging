@@ -122,7 +122,7 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
 
     INSERT <ls_main> INTO TABLE <lt_main>.
     INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( )
-                    struct = lv_struct
+                    struct = zif_mdg_0g_cu=>gc_struct-kattr
                     recs   = lr_tab )
       INTO TABLE et_targets.
 
@@ -137,7 +137,7 @@ CLASS zcl_mdg_0g_srv_mapper IMPLEMENTATION.
       DATA(lr_txt) = build_texts( is_message = is_message it_keys = lt_keys ).
       IF lr_txt IS BOUND.
         INSERT VALUE #( entity = zif_mdg_0g_srv_mapper~get_main_entity( )
-                        struct = zif_mdg_0g_srv_mapper~get_text_struct( )
+                        struct = zif_mdg_0g_cu=>gc_struct-kltxt
                         recs   = lr_txt )
           INTO TABLE et_targets.
       ENDIF.

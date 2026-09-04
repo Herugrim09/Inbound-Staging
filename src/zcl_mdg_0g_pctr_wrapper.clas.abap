@@ -101,10 +101,22 @@ CLASS ZCL_MDG_0G_PCTR_WRAPPER IMPLEMENTATION.
 
     lo_cu->enqueue_cr( ).
 
+*   move each mapped row into its Gov API structure (create_ref) and buffer it
+    FIELD-SYMBOLS <lt_src> TYPE ANY TABLE.
     LOOP AT it_staging ASSIGNING FIELD-SYMBOL(<ls_stg>).
+      IF <ls_stg>-data IS NOT BOUND.
+        CONTINUE.
+      ENDIF.
+      ASSIGN <ls_stg>-data->* TO <lt_src>.
+      IF <lt_src> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
+      DATA(lr_row) = lo_cu->create_ref( iv_entity = <ls_stg>-entity
+                                        iv_struct = <ls_stg>-struct
+                                        it_data   = <lt_src> ).
       lo_cu->write_data( iv_entity = <ls_stg>-entity
                          iv_struct = <ls_stg>-struct
-                         ir_data   = <ls_stg>-data ).
+                         ir_data   = lr_row ).
     ENDLOOP.
 
     " only the leading PCTR entity is locked; PCCCASS / texts ride along with it

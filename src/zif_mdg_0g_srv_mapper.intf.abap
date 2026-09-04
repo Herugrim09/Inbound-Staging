@@ -12,10 +12,12 @@ INTERFACE zif_mdg_0g_srv_mapper
 ************************************************************************
 
   TYPES:
-    "! One result row: target entity + staging structure name + data reference
+    "! One result row: target entity + Gov API structure kind (zif_mdg_0g_cu=>gc_struct-*:
+    "! KATTR for master data, KLTXT for texts) + data reference holding the
+    "! mapped rows (typed to the mapper's own working structure).
     BEGIN OF ts_target,
       entity TYPE usmd_entity,
-      struct TYPE string,
+      struct TYPE usmd_struct,
       recs   TYPE REF TO data,
     END OF ts_target,
     tt_target TYPE STANDARD TABLE OF ts_target WITH KEY entity,

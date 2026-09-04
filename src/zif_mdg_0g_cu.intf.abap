@@ -14,12 +14,28 @@ INTERFACE zif_mdg_0g_cu
 *                             -> commit (start_workflow [+ COMMIT WORK])
 ************************************************************************
 
+  "! IF_USMD_GOV_API~CREATE_DATA_REFERENCE structure kinds (IV_STRUCT).
+  CONSTANTS:
+    BEGIN OF gc_struct,
+      key   TYPE usmd_struct VALUE 'KEY',    "  keys only
+      katta TYPE usmd_struct VALUE 'KATTA',  "  keys + USMD_S_ATTACHMENT
+      kattw TYPE usmd_struct VALUE 'KATTW',  "  keys + USMD_S_ATTACHMENT_WO_CONTENT
+      kattr TYPE usmd_struct VALUE 'KATTR',  "  keys + attributes (per IT_ATTRIBUTE)
+      kfldp TYPE usmd_struct VALUE 'KFLDP',  "  data structure type
+      kset  TYPE usmd_struct VALUE 'KSET',   "  key + SET
+      ksets TYPE usmd_struct VALUE 'KSETS',  "  keys + SET (higher-level entity types)
+      ktxt  TYPE usmd_struct VALUE 'KTXT',   "  keys + texts
+      kltxt TYPE usmd_struct VALUE 'KLTXT',  "  keys + texts + LANGU
+    END OF gc_struct.
+
   TYPES:
-    "! One buffered entity payload
+    "! One buffered entity payload - DATA is already a Gov-API-typed table
+    "! (built by CREATE_REF for STRUCT), so FLUSH can hand it straight to
+    "! write_entity.
     BEGIN OF ts_buffer,
       entity TYPE usmd_entity,
-      struct TYPE string,          " DDIC name of the line type behind DATA
-      data   TYPE REF TO data,     " REF TO standard table of <struct>
+      struct TYPE usmd_struct,     " gc_struct-* kind DATA was created for
+      data   TYPE REF TO data,     " REF TO the create_data_reference table
     END OF ts_buffer,
     tt_buffer TYPE STANDARD TABLE OF ts_buffer WITH DEFAULT KEY.
 
@@ -30,17 +46,20 @@ INTERFACE zif_mdg_0g_cu
               iv_edition        TYPE usmd_edition OPTIONAL
     RETURNING VALUE(rv_crequest) TYPE usmd_crequest.
 
-  "! Wrap a typed table in a data reference and put it into the internal
-  "! buffer (convenience around write_data).
+  "! Create a Gov API reference table for IV_ENTITY / IV_STRUCT via
+  "! IF_USMD_GOV_API~CREATE_DATA_REFERENCE. When IT_DATA is supplied its rows
+  "! are MOVE-CORRESPONDING'd in. Does NOT buffer - fill it and hand it to
+  "! WRITE_DATA (or pass your own already-typed table straight to WRITE_DATA).
   METHODS create_ref
-    IMPORTING iv_entity TYPE usmd_entity
-              iv_struct TYPE string
-              it_data   TYPE ANY TABLE.
+    IMPORTING iv_entity      TYPE usmd_entity
+              iv_struct      TYPE usmd_struct
+              it_data        TYPE ANY TABLE OPTIONAL
+    RETURNING VALUE(rr_data) TYPE REF TO data.
 
-  "! Put an entity data reference straight into the internal buffer.
+  "! Put an already Gov-API-typed table (see CREATE_REF) into the buffer.
   METHODS write_data
     IMPORTING iv_entity TYPE usmd_entity
-              iv_struct TYPE string
+              iv_struct TYPE usmd_struct
               ir_data   TYPE REF TO data.
 
   "! Lock the change request.

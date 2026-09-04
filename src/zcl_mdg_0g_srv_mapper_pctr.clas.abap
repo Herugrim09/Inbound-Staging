@@ -229,7 +229,7 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
     ENDLOOP.
 
     INSERT VALUE #( entity = c_entity_ccass
-                    struct = c_struct_ccass
+                    struct = zif_mdg_0g_cu=>gc_struct-kattr
                     recs   = lr_tab ) INTO TABLE ct_targets.
 
   ENDMETHOD.
