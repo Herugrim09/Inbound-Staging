@@ -233,10 +233,11 @@ CLASS zcl_mdg_0g_srv_mapper_pctr IMPLEMENTATION.
       run_group( EXPORTING iv_key = 'PCCCASS_ROW' is_src = <row> it_map = lt_map
                  CHANGING  cs_dst = <ls> ).
 
-*     for now: every delivered row means "assigned"
-      ASSIGN COMPONENT 'PCTRCCASS' OF STRUCTURE <ls> TO <f>.
-      IF <f> IS ASSIGNED.
-        <f> = 'X'.
+*     PCTRCCASS from the row ACTION_CODE: '03' -> abap_false, '04' -> abap_true
+      ASSIGN COMPONENT 'ACTION_CODE' OF STRUCTURE <row> TO FIELD-SYMBOL(<act>).
+      ASSIGN COMPONENT 'PCTRCCASS'   OF STRUCTURE <ls>  TO <f>.
+      IF <f> IS ASSIGNED AND <act> IS ASSIGNED.
+        <f> = COND #( WHEN <act> = '04' THEN abap_true ELSE abap_false ).
       ENDIF.
 
       INSERT <ls> INTO TABLE <lt>.
