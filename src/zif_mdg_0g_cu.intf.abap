@@ -33,9 +33,10 @@ INTERFACE zif_mdg_0g_cu
     "! (built by CREATE_REF for STRUCT), so FLUSH can hand it straight to
     "! write_entity.
     BEGIN OF ts_buffer,
-      entity TYPE usmd_entity,
-      struct TYPE usmd_struct,     " gc_struct-* kind DATA was created for
-      data   TYPE REF TO data,     " REF TO the create_data_reference table
+      entity    TYPE usmd_entity,
+      struct    TYPE usmd_struct,     " gc_struct-* kind DATA was created for
+      data      TYPE REF TO data,     " REF TO the create_data_reference table
+      attribute TYPE usmd_ts_fieldname, " attributes to write (KATTR, per FLUSH)
     END OF ts_buffer,
     tt_buffer TYPE STANDARD TABLE OF ts_buffer WITH DEFAULT KEY.
 
@@ -57,10 +58,12 @@ INTERFACE zif_mdg_0g_cu
     RETURNING VALUE(rr_data) TYPE REF TO data.
 
   "! Put an already Gov-API-typed table (see CREATE_REF) into the buffer.
+  "! IT_ATTRIBUTE is passed on to WRITE_ENTITY at FLUSH time (KATTR writes).
   METHODS write_data
-    IMPORTING iv_entity TYPE usmd_entity
-              iv_struct TYPE usmd_struct
-              ir_data   TYPE REF TO data.
+    IMPORTING iv_entity    TYPE usmd_entity
+              iv_struct    TYPE usmd_struct
+              ir_data      TYPE REF TO data
+              it_attribute TYPE usmd_ts_fieldname OPTIONAL.
 
   "! Lock the change request.
   METHODS enqueue_cr.

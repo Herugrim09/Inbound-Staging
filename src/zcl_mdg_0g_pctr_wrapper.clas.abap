@@ -17,6 +17,8 @@ public section.
   types TY_T_STAGING type ZIF_MDG_0G_CU=>TT_BUFFER .
 
   constants C_ENTITY_PCTR type USMD_ENTITY value 'PCTR' ##NO_TEXT.
+  constants C_ENTITY_CCASS type USMD_ENTITY value 'PCCCASS' ##NO_TEXT.
+  constants C_ATTR_PCTRCCASS type USMD_FIELDNAME value 'PCTRCCASS' ##NO_TEXT.
 
     "! Map the inbound Profit Center payload to 0G staging tables (one entry per entity).
   methods MAP_TO_STAGING
@@ -114,9 +116,20 @@ CLASS ZCL_MDG_0G_PCTR_WRAPPER IMPLEMENTATION.
       DATA(lr_row) = lo_cu->create_ref( iv_entity = <ls_stg>-entity
                                         iv_struct = <ls_stg>-struct
                                         it_data   = <lt_src> ).
-      lo_cu->write_data( iv_entity = <ls_stg>-entity
-                         iv_struct = <ls_stg>-struct
-                         ir_data   = lr_row ).
+
+      " PCCCASS carries the PCTRCCASS attribute - flag it as changed on write,
+      " otherwise the PCTR cross-entity derivation rebuilds the CC list and
+      " drops the delivered assignments
+      DATA lt_attribute TYPE usmd_ts_fieldname.
+      CLEAR lt_attribute.
+      IF <ls_stg>-entity = c_entity_ccass.
+        INSERT c_attr_pctrccass INTO TABLE lt_attribute.
+      ENDIF.
+
+      lo_cu->write_data( iv_entity    = <ls_stg>-entity
+                         iv_struct    = <ls_stg>-struct
+                         ir_data      = lr_row
+                         it_attribute = lt_attribute ).
     ENDLOOP.
 
     " only the leading PCTR entity is locked; PCCCASS / texts ride along with it

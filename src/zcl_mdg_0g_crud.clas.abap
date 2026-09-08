@@ -160,9 +160,10 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
     IF ir_data IS NOT BOUND.
       RETURN.
     ENDIF.
-    APPEND VALUE #( entity = iv_entity
-                    struct = iv_struct
-                    data   = ir_data ) TO mt_buffer.
+    APPEND VALUE #( entity    = iv_entity
+                    struct    = iv_struct
+                    data      = ir_data
+                    attribute = it_attribute ) TO mt_buffer.
   ENDMETHOD.
 
 
@@ -256,7 +257,8 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       TRY.
           li_api->write_entity( iv_crequest_id = mv_crequest
                                 iv_entity_name = <buf>-entity
-                                it_data        = <data> ).
+                                it_data        = <data>
+                                it_attribute   = <buf>-attribute ).
         CATCH cx_usmd_gov_api_entity_write INTO DATA(lx_write).
           collect( it_messages = lx_write->mt_messages ix_error = lx_write ).
         CATCH cx_usmd_gov_api INTO DATA(lx).
