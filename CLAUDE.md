@@ -23,7 +23,7 @@ Owns the end-to-end inbound handling. Two responsibilities, two method groups:
 - **Mapping** — `map_to_staging( is_request ) RETURNING rt_staging` : inbound proxy structure → `0G` staging structures, driving `CL_SMT_ENGINE` with the inbound SMT mapping (see below). One engine per entity, cached. Output: table of `{ entity TYPE usmd_entity, data TYPE REF TO data }` where `data` is the matching `/MDG/_SX_0G_*` table.
 - **Follow-up CR** — `create_follow_up_cr( it_staging [ iv_source_cr ] ) EXPORTING ev_crequest et_message` : composes the granular methods of `[B]` to create a CR, write the staged data into it, run the enqueue/dequeue dance, save, check and fire it. Modeled on the reference method below.
 
-Target entities: `PCTR` (`/MDG/_SX_0G_PCTR`), `PCTR_TEXT`, `PCTRH` (hierarchy node + relationship), company-code assignment if governed.
+Target entities: `PCTR` (`/MDG/_SX_0G_PCTR` — main attributes and, via the outbound mapping's separate `PCTR_NAME` step, per-language text; both steps share the same staging structure) and its associated relationship entity `PCCCASS` (company-code assignment). Hierarchy (`PCTRH`) is out of scope — not part of the outbound mapping this is reversed from.
 
 ### [B] Governance API / follow-up utility class  (proposed: `ZCL_MDG_0G_CR_WRITER`)
 Granular, reusable wrappers around single `IF_USMD_GOV_API` calls, each with standardized exception handling / message collection. No proxy-structure knowledge. Proposed methods:
@@ -104,12 +104,17 @@ Model constant: `if_usmdz_cons_general=>gc_model_default` = `'0G'`.
 
 `USMDZ6_0G_PCTR` / step `PCTR` maps **staging → replication request (outbound)** and cannot be run in reverse — its complex transformations (`CL_USMDZ6_0G_TRANSFORMATIONS=>MAP_CO_OBJECT`) are one-directional.
 
-Create a **separate inbound mapping** (proposed `Z0G_PCTR_IN`):
-- **One mapping, one step per entity type** (`PCTR`, `PCTR_TEXT`, `PCTRH`, optionally `PCTR_CCODE`).
+Create a **separate inbound mapping**, `Z0G_PCTR_IN`, confirmed mirroring `USMDZ6_0G_PCTR`'s own two mapping steps (no third/hierarchy step exists on the outbound side):
+- **`PCTR`** step — reversed: source `MDGF_PRFT_CTR_RPLCTN_REQ_PRFT`, target `/MDG/_SX_0G_PCTR`.
+- **`PCTR_NAME`** step — reversed: source `MDGF_PRFT_CTR_RPLCTN_REQ_NAME`, target `/MDG/_SX_0G_PCTR` (same staging structure as the `PCTR` step, not a separate text entity — confirmed from the outbound mapping, where both steps list `/MDG/_SX_0G_PCTR` as their **source**).
 - Each step = ordered transformations: **field mappings** (1:1, ALPHA conversions — team) **+ complex transformations** (built jointly).
-- Inbound complex transformations: split concatenated CO-object `ID` → `COAREA` (offset 0 len 4) + `PCTR` (remainder, ALPHA); language ISO → `SPRAS`; external/ISO date → `DATS`; hierarchy parent-node resolution + relationship type.
-- Transformation class: mirror `CL_USMDZ6_0G_TRANSFORMATIONS` — plain class, no mandatory interface; `IMPORTING` params from source fields, `EXPORTING` params to target fields, `CHANGING ch_target` for the whole structure, `I_ADD1`/`I_ADD2` for extra context. Proposed: `ZCL_MDG_0G_TRANSFORM_IN`.
-- Maintain via `SM34` → view cluster `VC_SMT_TRANSF`; test/trace via `MDG_ANALYSE_SMT`. Practical start: **Copy** `USMDZ6_0G_PCTR`, swap source/target, drop the directional complex transformations, keep field mappings reversed.
+- Complex transformations confirmed from the outbound `PCTR` step (order `00001`/`00002`/`00003`, field mapping sandwiched between two complex transformations) and reversed in `ZCL_MDG_0G_TRANSFORM_IN`:
+  - `split_coobj_id` — inverse of `MAP_CO_OBJECT` (`ENCODE_COOBJ_ID`): splits concatenated CO-object `ID` → `COAREA` (offset 0 len 4) + `PCTR` (remainder).
+  - `split_pc_cc_assignments` — inverse of `MAP_PC_CC_ASSIGNMENTS`: proxy `COMPANY_ASSIGNMENT[]` rows → staging `PCCCASS` rows (`COMPCODE` + `PCTRCCASS`); confirmed `ACTION_CODE` semantics: `'03'` → `PCTRCCASS = abap_false` (unassigned), `'04'` → `abap_true` (assigned). `COAREA`/`PCTR` keys on each row are filled by a plain field-mapping entry in the same step, not by this method — same as the outbound side.
+- Transformation class: mirrors `CL_USMDZ6_0G_TRANSFORMATIONS` — plain class, `CLASS-METHODS`, `IMPORTING`/`EXPORTING` wired to source/target fields by SM34's Structure Path config (no manual structure navigation inside the method). Built: `ZCL_MDG_0G_TRANSFORM_IN` (`src/zcl_mdg_0g_transform_in.clas.abap`).
+- Runtime: `CL_SMT_ENGINE_FACTORY=>GET_ENGINE( i_mapping i_mapping_step ... )` returns the cached engine; `CL_SMT_ENGINE->EXECUTE( EXPORTING i_source CHANGING ch_target )` drives it, raising `cx_smt_customizing_error` / `cx_smt_no_class` / `cx_smt_no_entry` / `cx_smt_no_method` / `cx_smt_transformation_error`.
+- Maintain via `SM34` → view cluster `VC_SMT_TRANSF`; test/trace via `MDG_ANALYSE_SMT`. Practical start: **Copy** `USMDZ6_0G_PCTR`, swap source/target per step, drop the directional complex transformations, keep field mappings reversed.
+- Open/unverified: whether `CX_SMT_UNSUCCESSFUL_TRANS` allows a parameterless `RAISE` (outbound builds it via `CL_USMDZ6_MSG=>ADD_000` + a protocol helper we don't have) — check in SE24 before activating `ZCL_MDG_0G_TRANSFORM_IN`.
 
 ## Open design decisions (not yet fixed)
 
@@ -120,9 +125,8 @@ Create a **separate inbound mapping** (proposed `Z0G_PCTR_IN`):
 5. CR type: fixed, from Customizing, or derived (reference derives from Chart of Accounts).
 6. Create vs. Change: existence check on `PRCTR` (active area / key mapping) before writing.
 7. Logging / error strategy: own application-log object vs. returning `et_message` vs. raising `cx_bs_soa_badi_processing` on the confirmation. (`/s4e/cl_p40_mdg_0g_logging` is not available here.)
-8. Whether hierarchy (`PCTRH`) goes into the same CR.
-9. Idempotency on message redelivery.
-10. Whether `start_workflow` alone is enough to fully approve/activate, or a follow-up `finalize_process_step` / auto-approval CR type config is required.
+8. Idempotency on message redelivery.
+9. Whether `start_workflow` alone is enough to fully approve/activate, or a follow-up `finalize_process_step` / auto-approval CR type config is required.
 
 ## Reference material
 
