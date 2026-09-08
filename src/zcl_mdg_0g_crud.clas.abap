@@ -52,6 +52,7 @@ private section.
   class-data GO_INSTANCE type ref to ZCL_MDG_0G_CRUD .
   data MV_MODEL type USMD_MODEL .
   data MV_CREQUEST type USMD_CREQUEST .
+  data MV_EDITION type USMD_EDITION .
   data MT_BUFFER type ZIF_MDG_0G_CU=>TT_BUFFER .
   data MT_MESSAGE type USMD_T_MESSAGE .
   data MI_API type ref to IF_USMD_GOV_API .
@@ -109,10 +110,12 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " edition is mandatory - fall back to the always-open DUMMY edition
+    " edition is mandatory - fall back to the always-open DUMMY edition.
+    " kept in MV_EDITION so CREATE_REF can stamp it onto every generated row.
     DATA(lv_edition) = COND usmd_edition( WHEN iv_edition IS NOT INITIAL
                                           THEN iv_edition
                                           ELSE 'DUMMY' ).
+    mv_edition = lv_edition.
 
     TRY.
         rv_crequest = li_api->create_crequest( iv_crequest_type = iv_crequest_type
@@ -136,6 +139,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
     TRY.
         li_api->create_data_reference( EXPORTING iv_entity_name = iv_entity
                                                  iv_struct      = iv_struct
+                                                 iv_edition     = abap_true
                                        IMPORTING er_table       = rr_data ).
       CATCH cx_usmd_gov_api INTO DATA(lx).
         collect( it_messages = lx->mt_messages ix_error = lx ).
@@ -149,9 +153,39 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab> TYPE ANY TABLE.
     ASSIGN rr_data->* TO <tab>.
-    IF <tab> IS ASSIGNED.
-      <tab> = CORRESPONDING #( it_data ).
+    IF <tab> IS NOT ASSIGNED.
+      RETURN.
     ENDIF.
+
+    <tab> = CORRESPONDING #( it_data ).
+
+*   stamp the CR edition onto every row (structure was generated with
+*   IV_EDITION = ABAP_TRUE). Copy via work area - the reference table is a
+*   sorted table and EDITION may be part of its key.
+    IF mv_edition IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    DATA lr_tmp TYPE REF TO data.
+    CREATE DATA lr_tmp LIKE <tab>.
+    FIELD-SYMBOLS <tmp> TYPE ANY TABLE.
+    ASSIGN lr_tmp->* TO <tmp>.
+
+    DATA lr_wa TYPE REF TO data.
+    CREATE DATA lr_wa LIKE LINE OF <tab>.
+    FIELD-SYMBOLS <wa> TYPE any.
+    ASSIGN lr_wa->* TO <wa>.
+
+    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<row>).
+      <wa> = <row>.
+      ASSIGN COMPONENT usmd0_cs_fld-edition OF STRUCTURE <wa> TO FIELD-SYMBOL(<edi>).
+      IF <edi> IS ASSIGNED.
+        <edi> = mv_edition.
+      ENDIF.
+      INSERT <wa> INTO TABLE <tmp>.
+    ENDLOOP.
+
+    <tab> = <tmp>.
 
   ENDMETHOD.
 
@@ -321,7 +355,7 @@ CLASS ZCL_MDG_0G_CRUD IMPLEMENTATION.
 
 
   METHOD clear_buffers.
-    CLEAR: mt_buffer, mt_message, mv_crequest.
+    CLEAR: mt_buffer, mt_message, mv_crequest, mv_edition.
   ENDMETHOD.
 
 
