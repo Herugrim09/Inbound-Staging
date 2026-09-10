@@ -37,7 +37,7 @@ Granular, reusable wrappers around single `IF_USMD_GOV_API` calls, each with sta
 - `save_draft( iv_crequest_id )` — `save( i_mode = if_usmd_ui_services=>gc_save_mode_draft_no_check )`.
 - `check( iv_crequest_id )` — `check_crequest_data`.
 - `fire( iv_crequest_id )` — `if_usmd_gov_api_process~start_workflow`.
-- Caller does `COMMIT WORK AND WAIT` once, after `fire`.
+- Caller does `COMMIT WORK AND WAIT` once, after `fire` - REQUIRED: without it the CR is never persisted and its workflow never starts. Issued in `ZCL_MDG_0G_CRUD~COMMIT` only, gated by `iv_commit`.
 
 ### Inbound BAdI implementation class
 Delegates to `[A]`: `map_to_staging( )` then `create_follow_up_cr( )`. Returns `ev_crequest` + `et_message` to the BAdI signature.
@@ -131,4 +131,4 @@ Create a **separate inbound mapping**, `Z0G_PCTR_IN`, confirmed mirroring `USMDZ
 ## Reference material
 
 - **`create_crequest_acc_company`** (S4E `E00607`) — canonical follow-up CR creation via `IF_USMD_GOV_API` (see sequence above). Reuse the call order and exception handling; leave out the S4E BRF approver routing and the parent-CR inherit steps unless decision 3 keeps them.
-- **`ZCL_MDG_SE_BP_BULK_REPLRQ_IN`** (Business Partner inbound BAdI) — pattern source for the `CL_SMT_ENGINE` wrapper and per-entity engine caching. Do **not** carry over its known issues: `gt_entity_diff` keyed only by entity (silent `INSERT` failure for multi-record entities), always using `gt_address_keys[ 1 ]`, dump-prone Gov API error handlers, `COMMIT WORK` inside SOA inbound processing.
+- **`ZCL_MDG_SE_BP_BULK_REPLRQ_IN`** (Business Partner inbound BAdI) — pattern source for the `CL_SMT_ENGINE` wrapper and per-entity engine caching. Do **not** carry over its known issues: `gt_entity_diff` keyed only by entity (silent `INSERT` failure for multi-record entities), always using `gt_address_keys[ 1 ]`, dump-prone Gov API error handlers, and `COMMIT WORK` issued mid-flow (per record, inside the processing loop). That last point is NOT an argument against the single `COMMIT WORK AND WAIT` after `fire` prescribed above: that one is REQUIRED - without it the change request is never persisted and its workflow never starts. In this repository it is issued in exactly one place, `ZCL_MDG_0G_CRUD~COMMIT`, gated by `iv_commit`, and nowhere else.

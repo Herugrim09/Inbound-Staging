@@ -28,6 +28,11 @@ CLASS zcl_mdg_0g_srv_mapper_factory IMPLEMENTATION.
     CASE iv_entity.
       WHEN 'PCTR'.
         ro_map = NEW zcl_mdg_0g_srv_mapper_pctr( ).
+      WHEN 'ACCOUNT'.
+*       confirmed: entity type of the outbound SMT mapping
+*       USMDZ6_0G_ACCOUNT. Keep in sync with
+*       ZCL_MDG_0G_SRV_MAPPER_ACC=>C_ENTITY_MAIN.
+        ro_map = NEW zcl_mdg_0g_srv_mapper_acc( ).
 *     WHEN 'CCTR'.
 *       ro_map = NEW zcl_mdg_0g_srv_mapper_cctr( ).
       WHEN OTHERS.
