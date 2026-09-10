@@ -8,10 +8,23 @@ INTERFACE zif_mdg_0g_cu
 *           that keeps an internal buffer of staged entity data:
 *
 *             create_crequest -> create_ref / write_data (x N)
-*                             -> enqueue_cr -> enqueue_entity (x N)
-*                             -> flush  (buffer -> Gov API buffers, buffer cleared)
-*                             -> save   (draft, no check)
+*                             -> enqueue_cr
+*                             -> enqueue_entity (x N)   locks the key rows
+*                             -> flush  (buffer -> Gov API buffers via
+*                                        write_entity, buffer cleared)
+*                             -> dequeue_entity (x N)   releases those rows
+*                             -> save   (draft, no check; dequeues the CR
+*                                        and, as a safety net, every entity
+*                                        lock still held)
 *                             -> commit (start_workflow [+ COMMIT WORK])
+*
+*           Locking is symmetric per CLAUDE.md: enqueue_entity(key) ->
+*           write_entity(key+attr) -> dequeue_entity(key). The DEQUEUE
+*           must come AFTER flush( ), i.e. after write_entity; the
+*           implementation therefore keeps its own lock registry instead
+*           of re-deriving the key rows from the (by then cleared) buffer.
+*           A caller that never dequeues is still safe: SAVE and
+*           CLEAR_BUFFERS release everything that is still locked.
 ************************************************************************
 
   "! IF_USMD_GOV_API~CREATE_DATA_REFERENCE structure kinds (IV_STRUCT).
@@ -68,22 +81,41 @@ INTERFACE zif_mdg_0g_cu
   "! Lock the change request.
   METHODS enqueue_cr.
 
-  "! Lock one entity (key rows taken from the internal buffer).
+  "! Lock one entity (key rows taken from the internal buffer). The key
+  "! rows that were locked are remembered, so DEQUEUE_ENTITY can release
+  "! exactly them after FLUSH has emptied the buffer.
+  "! @parameter iv_entity | entity type to lock
   METHODS enqueue_entity
     IMPORTING iv_entity TYPE usmd_entity.
 
+  "! Release the lock of ONE entity - call it after FLUSH, i.e. after the
+  "! write_entity that the lock protects. Silent no-op (no dump, no
+  "! message) when that entity is not locked, so calling it twice, or for
+  "! an entity that was never enqueued, is harmless.
+  "! @parameter iv_entity | entity type to unlock
+  METHODS dequeue_entity
+    IMPORTING iv_entity TYPE usmd_entity.
+
+  "! Release EVERY entity lock still held by this session. Safety net for
+  "! early RETURNs and error paths, where the caller does not know which
+  "! entities got locked. No-op when nothing is locked.
+  METHODS dequeue_all_entities.
+
   "! Push the internal buffer into the Gov API buffers via write_entity,
-  "! then clear the internal buffer.
+  "! then clear the internal buffer. Locks are NOT released here - that is
+  "! DEQUEUE_ENTITY's job (or SAVE's safety net).
   METHODS flush.
 
-  "! Save the change request (draft, no check) and unlock it.
+  "! Release every entity lock still held, save the change request
+  "! (draft, no check) and unlock the change request.
   METHODS save.
 
   "! Check, start the workflow and - if iv_commit - COMMIT WORK AND WAIT.
   METHODS commit
     IMPORTING iv_commit TYPE abap_bool DEFAULT abap_false.
 
-  "! Drop the internal buffer, the collected messages and the CR id.
+  "! Release every entity lock still held, then drop the internal buffer,
+  "! the collected messages and the CR id.
   METHODS clear_buffers.
 
   "! Messages collected across all calls since the last create_crequest / clear.

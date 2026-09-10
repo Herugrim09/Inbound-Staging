@@ -135,7 +135,12 @@ CLASS ZCL_MDG_0G_PCTR_WRAPPER IMPLEMENTATION.
     " only the leading PCTR entity is locked; PCCCASS / texts ride along with it
     lo_cu->enqueue_entity( iv_entity = c_entity_pctr ).
 
+    " enqueue_entity(key) -> write_entity(key+attr) -> dequeue_entity(key):
+    " FLUSH does the write_entity, so the dequeue belongs after it and
+    " before SAVE. Keep this sequence identical in ZCL_MDG_0G_ACC_WRAPPER.
     lo_cu->flush( ).
+    lo_cu->dequeue_entity( iv_entity = c_entity_pctr ).
+
     lo_cu->save( ).
     lo_cu->commit( iv_commit = iv_commit ).
 
